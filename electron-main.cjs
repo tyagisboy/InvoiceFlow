@@ -1,6 +1,9 @@
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
+// Set a custom User-Agent globally to prevent APIs (like Nominatim) from blocking requests
+app.userAgentFallback = 'InvoiceFlow/1.0.0 (contact@invoiceflow.com)';
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -10,7 +13,8 @@ function createWindow() {
     icon: path.join(__dirname, 'icon.ico'), // Generic fallback, though we don't have one right now
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: false // Bypass CORS restrictions for local file:// API requests
     }
   });
 

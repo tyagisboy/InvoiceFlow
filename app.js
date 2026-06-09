@@ -1338,7 +1338,10 @@ function populateCountryList() {
 
 function reverseGeocode(lat, lon, originalText) {
   fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`, {
-    headers: { 'Accept-Language': 'en' }
+    headers: { 
+      'Accept-Language': 'en',
+      'User-Agent': 'InvoiceFlow/1.0.0 (contact@invoiceflow.com)'
+    }
   })
   .then(res => res.json())
   .then(data => {
@@ -1388,20 +1391,36 @@ function handleGpsLocation() {
     },
     (error) => {
       console.warn("Native GPS failed, falling back to IP Geolocation:", error);
+      
+      // Dual-layer IP Geolocation fallback
+      // Layer 1: ipwho.is
       fetch('https://ipwho.is/')
         .then(res => res.json())
         .then(data => {
           if (data && data.success && data.latitude && data.longitude) {
             reverseGeocode(data.latitude, data.longitude, originalText);
           } else {
-            throw new Error("Invalid IP Location data");
+            throw new Error("Invalid IP Location data from ipwho.is");
           }
         })
-        .catch(err => {
-          console.error("IP Fallback failed:", err);
-          showToast('Could not fetch GPS or IP fallback. Please ensure permissions are granted.');
-          DOM.btnGpsLocate.textContent = originalText;
-          DOM.btnGpsLocate.disabled = false;
+        .catch(err1 => {
+          console.warn("ipwho.is failed, trying freeipapi.com fallback:", err1);
+          // Layer 2: freeipapi.com
+          fetch('https://freeipapi.com/api/json')
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.latitude && data.longitude) {
+                reverseGeocode(data.latitude, data.longitude, originalText);
+              } else {
+                throw new Error("Invalid IP Location data from freeipapi");
+              }
+            })
+            .catch(err2 => {
+              console.error("All geocoding fallbacks failed:", err2);
+              showToast('Could not fetch GPS or IP fallback. Please ensure permissions are granted.');
+              DOM.btnGpsLocate.textContent = originalText;
+              DOM.btnGpsLocate.disabled = false;
+            });
         });
     },
     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -2661,7 +2680,8 @@ function handleAddressAutocomplete(query, dropdownEl, callback) {
   
   fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
     headers: {
-      'Accept-Language': 'en'
+      'Accept-Language': 'en',
+      'User-Agent': 'InvoiceFlow/1.0.0 (contact@invoiceflow.com)'
     }
   })
     .then(res => res.json())
