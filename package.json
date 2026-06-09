@@ -34,7 +34,13 @@
       "package.json"
     ],
     "win": {
-      "target": "portable"
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "uninstallDisplayName": "Invoice Generator"
     }
   }
 }
