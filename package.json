@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:start": "electron .",
-    "electron:build": "electron-packager . \"Invoice Generator\" --platform=win32 --arch=x64 --out=dist-electron --overwrite",
+    "electron:build": "electron-packager . \"Invoice Generator\" --platform=win32 --arch=x64 --out=dist-electron --icon=icon.ico --overwrite",
     "electron:dist": "electron-builder --win",
     "electron:installer": "node build-installer.cjs"
   },
@@ -31,16 +31,21 @@
       "app.js",
       "styles.css",
       "electron-main.cjs",
-      "package.json"
+      "package.json",
+      "icon.ico"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
-      "uninstallDisplayName": "Invoice Generator"
+      "uninstallDisplayName": "Invoice Generator",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "createDesktopShortcut": "always"
     }
   }
 }
