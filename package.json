@@ -10,12 +10,14 @@
     "preview": "vite preview",
     "electron:start": "electron .",
     "electron:build": "electron-packager . \"Invoice Generator\" --platform=win32 --arch=x64 --out=dist-electron --overwrite",
-    "electron:dist": "electron-builder --win"
+    "electron:dist": "electron-builder --win",
+    "electron:installer": "node build-installer.cjs"
   },
   "devDependencies": {
     "@electron/packager": "^20.0.1",
     "electron": "22.3.27",
     "electron-builder": "^24.13.3",
+    "electron-winstaller": "^5.4.0",
     "vite": "^5.2.0"
   },
   "build": {
