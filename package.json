@@ -1,5 +1,5 @@
 {
-  "name": "invoice-generator",
+  "name": "invoice-flow",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:start": "electron .",
-    "electron:build": "electron-packager . \"Invoice Generator\" --platform=win32 --arch=x64 --out=dist-electron --icon=icon.ico --overwrite",
+    "electron:build": "electron-packager . \"Invoice Flow\" --platform=win32 --arch=x64 --out=dist-electron --icon=icon.ico --overwrite",
     "electron:dist": "electron-builder --win",
     "electron:installer": "node build-installer.cjs"
   },
@@ -18,11 +18,12 @@
     "electron": "22.3.27",
     "electron-builder": "^24.13.3",
     "electron-winstaller": "^5.4.0",
+    "png-to-ico": "^3.0.1",
     "vite": "^5.2.0"
   },
   "build": {
-    "appId": "com.invoice.generator",
-    "productName": "Invoice Generator",
+    "appId": "com.invoice.flow",
+    "productName": "Invoice Flow",
     "directories": {
       "output": "dist-electron"
     },
@@ -31,8 +32,10 @@
       "app.js",
       "styles.css",
       "electron-main.cjs",
+      "preload.cjs",
       "package.json",
-      "icon.ico"
+      "icon.ico",
+      "icon.png"
     ],
     "win": {
       "target": "nsis",
@@ -42,7 +45,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
-      "uninstallDisplayName": "Invoice Generator",
+      "uninstallDisplayName": "Invoice Flow",
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico",
       "createDesktopShortcut": "always"

@@ -3,7 +3,8 @@ const STATE_KEYS = {
   SETTINGS: 'invoice_flow_settings',
   PARTIES: 'invoice_flow_parties',
   INVOICES: 'invoice_flow_invoices',
-  THEME: 'invoice_flow_theme'
+  THEME: 'invoice_flow_theme',
+  SIDEBAR_COLLAPSED: 'invoice_flow_sidebar_collapsed'
 };
 
 const CURRENCY_SYMBOLS = {
@@ -13,8 +14,16 @@ const CURRENCY_SYMBOLS = {
   GBP: '£'
 };
 
+const ICONS = {
+  SUN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="22" y2="12"></line><line x1="6.34" y1="17.66" x2="4.93" y2="19.07"></line><line x1="19.07" y1="4.93" x2="17.66" y2="6.34"></line></svg>`,
+  MOON: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
+  MENU: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`,
+  MENU_OPEN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="3" y1="6" x2="15" y2="6"></line><line x1="3" y1="12" x2="11" y2="12"></line><line x1="3" y1="18" x2="15" y2="18"></line><path d="M16 8l-4 4 4 4"></path></svg>`
+};
+
 let state = {
   theme: 'light',
+  sidebarCollapsed: false,
   settings: null,
   parties: [],
   invoicesHistory: [],
@@ -52,7 +61,9 @@ const DOM = {
   body: document.body,
   navItems: document.querySelectorAll('.nav-item'),
   sections: document.querySelectorAll('.view-section'),
-  themeToggle: document.getElementById('dark-theme-toggle'),
+  themeToggle: document.getElementById('btn-theme-toggle'),
+  btnToggleSidebar: document.getElementById('btn-toggle-sidebar'),
+  sidebar: document.querySelector('.sidebar'),
   
   // Section Invoices
   invoiceWorkspaceTitle: document.getElementById('invoice-workspace-title'),
@@ -299,63 +310,143 @@ let tempWizardUploads = {
 let currentWizardStep = 1;
 
 // --- INITIALIZATION ---
-function init() {
-  loadData();
+async function init() {
+  await loadData();
   setupEventListeners();
   checkBusinessSetup();
   initTheme();
+  initSidebar();
   initInvoiceDates();
   
   // Start with default clean invoice
   resetInvoiceForm();
 }
 
-// Load data from LocalStorage
-function loadData() {
-  const storedSettings = localStorage.getItem(STATE_KEYS.SETTINGS);
-  state.settings = storedSettings ? JSON.parse(storedSettings) : null;
+// Load data from filesystem (Electron IPC) or fallback to LocalStorage
+async function loadData() {
+  const hasApi = typeof window !== 'undefined' && window.api;
+  
+  if (hasApi) {
+    try {
+      state.settings = await window.api.loadData('settings');
+    } catch (e) {
+      console.error("Failed to load settings from file:", e);
+      state.settings = null;
+    }
+  } else {
+    try {
+      const storedSettings = localStorage.getItem(STATE_KEYS.SETTINGS);
+      state.settings = storedSettings ? JSON.parse(storedSettings) : null;
+    } catch (e) {
+      console.error("Failed to parse stored settings:", e);
+      state.settings = null;
+    }
+  }
   
   // Data migration for business settings address
   if (state.settings && state.settings.companyAddress && !state.settings.companyAddressLine1) {
     state.settings.companyAddressLine1 = state.settings.companyAddress;
     delete state.settings.companyAddress;
-    localStorage.setItem(STATE_KEYS.SETTINGS, JSON.stringify(state.settings));
+    try {
+      await saveSettings(state.settings);
+    } catch (e) {
+      console.error("Failed to save migrated settings:", e);
+    }
   }
   
-  const storedParties = localStorage.getItem(STATE_KEYS.PARTIES);
-  state.parties = storedParties ? JSON.parse(storedParties) : [];
+  if (hasApi) {
+    try {
+      state.parties = await window.api.loadData('parties') || [];
+    } catch (e) {
+      console.error("Failed to load parties from file:", e);
+      state.parties = [];
+    }
+  } else {
+    try {
+      const storedParties = localStorage.getItem(STATE_KEYS.PARTIES);
+      state.parties = storedParties ? JSON.parse(storedParties) : [];
+    } catch (e) {
+      console.error("Failed to parse stored parties:", e);
+      state.parties = [];
+    }
+  }
   
   // Data migration for saved parties address
   let partiesUpdated = false;
-  state.parties.forEach(p => {
-    if (p.address && !p.addressLine1) {
-      p.addressLine1 = p.address;
-      delete p.address;
-      partiesUpdated = true;
+  if (Array.isArray(state.parties)) {
+    state.parties.forEach(p => {
+      if (p && p.address && !p.addressLine1) {
+        p.addressLine1 = p.address;
+        delete p.address;
+        partiesUpdated = true;
+      }
+    });
+    if (partiesUpdated) {
+      try {
+        await saveParties(state.parties);
+      } catch (e) {
+        console.error("Failed to save migrated parties:", e);
+      }
     }
-  });
-  if (partiesUpdated) {
-    localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(state.parties));
+  } else {
+    state.parties = [];
   }
   
-  const storedInvoices = localStorage.getItem(STATE_KEYS.INVOICES);
-  state.invoicesHistory = storedInvoices ? JSON.parse(storedInvoices) : [];
-  
-  // Data migration for invoice history addresses
-  let historyUpdated = false;
-  state.invoicesHistory.forEach(inv => {
-    if (inv.partyAddress && !inv.partyAddressLine1) {
-      inv.partyAddressLine1 = inv.partyAddress;
-      delete inv.partyAddress;
-      historyUpdated = true;
+  if (hasApi) {
+    try {
+      state.invoicesHistory = await window.api.loadData('invoices') || [];
+    } catch (e) {
+      console.error("Failed to load invoices from file:", e);
+      state.invoicesHistory = [];
     }
-  });
-  if (historyUpdated) {
-    localStorage.setItem(STATE_KEYS.INVOICES, JSON.stringify(state.invoicesHistory));
+  } else {
+    try {
+      const storedInvoices = localStorage.getItem(STATE_KEYS.INVOICES);
+      state.invoicesHistory = storedInvoices ? JSON.parse(storedInvoices) : [];
+    } catch (e) {
+      console.error("Failed to parse stored invoices:", e);
+      state.invoicesHistory = [];
+    }
+  }
+  
+  // Data migration for invoice history addresses and items
+  let historyUpdated = false;
+  if (Array.isArray(state.invoicesHistory)) {
+    state.invoicesHistory.forEach(inv => {
+      if (inv) {
+        if (inv.partyAddress && !inv.partyAddressLine1) {
+          inv.partyAddressLine1 = inv.partyAddress;
+          delete inv.partyAddress;
+          historyUpdated = true;
+        }
+        if (!inv.items) {
+          inv.items = [];
+          historyUpdated = true;
+        }
+      }
+    });
+    if (historyUpdated) {
+      try {
+        await saveInvoices(state.invoicesHistory);
+      } catch (e) {
+        console.error("Failed to save migrated invoices:", e);
+      }
+    }
+  } else {
+    state.invoicesHistory = [];
   }
   
   const storedTheme = localStorage.getItem(STATE_KEYS.THEME);
   state.theme = storedTheme || 'light';
+  
+  const storedSidebar = localStorage.getItem(STATE_KEYS.SIDEBAR_COLLAPSED);
+  if (window.innerWidth < 1440) {
+    state.sidebarCollapsed = true;
+  } else if (storedSidebar !== null) {
+    state.sidebarCollapsed = storedSidebar === 'true';
+  } else {
+    state.sidebarCollapsed = false;
+  }
 }
 
 // Check if Business setup is complete, otherwise show wizard
@@ -505,6 +596,11 @@ function updateWizardView() {
     }
   }
   
+  // If moving to step 2, update banking list and dial code based on country choice in step 1
+  if (currentWizardStep === 2 && DOM.wizCountry) {
+    updateCountryDependentFields(DOM.wizCountry.value);
+  }
+  
   // Update buttons
   DOM.btnWizBack.style.display = (currentWizardStep > 1) ? 'block' : 'none';
   
@@ -550,6 +646,10 @@ function populateSettingsForm() {
   DOM.settDistrict.value = s.companyDistrict || '';
   DOM.settPincode.value = s.companyPincode || '';
   DOM.settCountry.value = s.companyCountry || '';
+  
+  if (s.companyCountry) {
+    updateBankList(s.companyCountry);
+  }
   
   DOM.settBankName.value = s.bankName || '';
   DOM.settBankHolder.value = s.bankHolder || '';
@@ -606,15 +706,51 @@ function updateQrPreview(base64Str, prefix = 'sett') {
 }
 
 // --- THEME ---
-function initTheme() {
-  document.documentElement.setAttribute('data-theme', state.theme);
-  DOM.themeToggle.checked = (state.theme === 'dark');
+function updateThemeUI() {
+  const iconContainer = document.getElementById('theme-toggle-icon');
+  const textContainer = document.getElementById('theme-toggle-text');
+  if (state.theme === 'dark') {
+    if (iconContainer) iconContainer.innerHTML = ICONS.SUN;
+    if (textContainer) textContainer.textContent = 'Light Mode';
+  } else {
+    if (iconContainer) iconContainer.innerHTML = ICONS.MOON;
+    if (textContainer) textContainer.textContent = 'Dark Mode';
+  }
 }
 
-function toggleTheme(e) {
-  state.theme = e.target.checked ? 'dark' : 'light';
+function updateSidebarUI() {
+  const iconContainer = document.getElementById('sidebar-toggle-icon');
+  const textContainer = document.getElementById('sidebar-toggle-text');
+  if (state.sidebarCollapsed) {
+    if (iconContainer) iconContainer.innerHTML = ICONS.MENU;
+    if (textContainer) textContainer.textContent = 'Expand Menu';
+  } else {
+    if (iconContainer) iconContainer.innerHTML = ICONS.MENU_OPEN;
+    if (textContainer) textContainer.textContent = 'Collapse Menu';
+  }
+}
+
+// --- THEME ---
+function initTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  updateThemeUI();
+}
+
+function toggleTheme() {
+  state.theme = (state.theme === 'dark') ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', state.theme);
   localStorage.setItem(STATE_KEYS.THEME, state.theme);
+  updateThemeUI();
+}
+
+// --- SIDEBAR ---
+function initSidebar() {
+  if (state.sidebarCollapsed && DOM.sidebar) {
+    DOM.sidebar.classList.add('collapsed');
+  } else if (DOM.sidebar) {
+    DOM.sidebar.classList.remove('collapsed');
+  }
+  updateSidebarUI();
 }
 
 // --- DATE INITIALIZATION ---
@@ -1216,6 +1352,10 @@ function loadInvoiceToEditor(inv) {
   
   state.currentInvoice = JSON.parse(JSON.stringify(inv)); // deep copy
   
+  if (!state.currentInvoice.items) {
+    state.currentInvoice.items = [];
+  }
+  
   // Sync fields
   DOM.partyName.value = inv.partyName || '';
   DOM.partyPhone.value = inv.partyPhone || '';
@@ -1310,6 +1450,7 @@ function updateBankList(countryStr) {
   banks.forEach(bank => {
     const option = document.createElement('option');
     option.value = bank;
+    option.textContent = bank; // Set option textContent explicitly for better rendering compatibility
     datalist.appendChild(option);
   });
 }
@@ -1444,8 +1585,43 @@ function showToast(message) {
 
 // --- EVENT LISTENERS SETUP ---
 function setupEventListeners() {
+  // Sidebar Toggle
+  if (DOM.btnToggleSidebar) {
+    DOM.btnToggleSidebar.addEventListener('click', () => {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+      localStorage.setItem(STATE_KEYS.SIDEBAR_COLLAPSED, state.sidebarCollapsed);
+      if (DOM.sidebar) {
+        DOM.sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+      }
+      updateSidebarUI();
+    });
+  }
+
+  // Auto-collapse sidebar when screen size drops below 1440px
+  let lastWidth = window.innerWidth;
+  window.addEventListener('resize', () => {
+    const currentWidth = window.innerWidth;
+    if (currentWidth < 1440 && lastWidth >= 1440) {
+      state.sidebarCollapsed = true;
+      if (DOM.sidebar) {
+        DOM.sidebar.classList.add('collapsed');
+      }
+      updateSidebarUI();
+    } else if (currentWidth >= 1440 && lastWidth < 1440) {
+      const storedSidebar = localStorage.getItem(STATE_KEYS.SIDEBAR_COLLAPSED);
+      state.sidebarCollapsed = storedSidebar === 'true';
+      if (DOM.sidebar) {
+        DOM.sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+      }
+      updateSidebarUI();
+    }
+    lastWidth = currentWidth;
+  });
+
   // Theme Toggle
-  DOM.themeToggle.addEventListener('change', toggleTheme);
+  if (DOM.themeToggle) {
+    DOM.themeToggle.addEventListener('click', toggleTheme);
+  }
   
   // Phone Restrictions
   DOM.wizCompanyPhone.addEventListener('input', restrictPhoneInput);
@@ -1494,7 +1670,7 @@ function setupEventListeners() {
   // Save Party to Registry
   const btnSavePartyRegistry = document.getElementById('btn-save-party-registry');
   if (btnSavePartyRegistry) {
-    btnSavePartyRegistry.addEventListener('click', () => {
+    btnSavePartyRegistry.addEventListener('click', async () => {
       const inv = state.currentInvoice;
       if (!inv.partyName) {
         alert('Please enter a Party / Customer Name first.');
@@ -1524,7 +1700,7 @@ function setupEventListeners() {
         state.parties.push(newParty);
         alert('Party saved to registry.');
       }
-      localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(state.parties));
+      await saveParties(state.parties);
       if (typeof renderPartiesRegistry === 'function') {
         renderPartiesRegistry();
       }
@@ -1604,6 +1780,10 @@ function setupEventListeners() {
       state.settings.companyPincode = parsed.pincode;
       state.settings.companyCountry = parsed.country;
       state.settings.companyCountryCode = parsed.countryCode;
+      
+      if (parsed.country) {
+        updateBankList(parsed.country);
+      }
     });
   }, 400));
 
@@ -1617,6 +1797,10 @@ function setupEventListeners() {
       DOM.wizCountry.value = parsed.country;
       
       tempWizardUploads.countryCode = parsed.countryCode;
+      
+      if (parsed.country) {
+        updateCountryDependentFields(parsed.country);
+      }
     });
   }, 400));
 
@@ -1784,6 +1968,7 @@ function switchView(viewId) {
     renderInvoiceHistory();
   } else if (viewId === 'settings-view') {
     populateSettingsForm();
+    updateStorageStatsUI();
   }
 }
 
@@ -1844,6 +2029,13 @@ function closeAddItemDrawer() {
 }
 
 function handleAddItemSubmit() {
+  if (!state.currentInvoice) {
+    resetInvoiceForm();
+  }
+  if (!state.currentInvoice.items) {
+    state.currentInvoice.items = [];
+  }
+
   const name = DOM.itemName.value.trim();
   const description = DOM.itemDescription.value.trim();
   const qty = parseInt(DOM.itemQty.value) || 0;
@@ -2066,7 +2258,9 @@ function resizeImageBase64(base64Str, maxWidth, maxHeight, callback) {
   };
 }
 
-function processUploadedImage(base64Str, imageType, prefix) {
+async function processUploadedImage(base64Str, imageType, prefix) {
+  const hasApi = typeof window !== 'undefined' && window.api;
+
   if (prefix === 'wiz') {
     tempWizardUploads[imageType] = base64Str;
     // Show mini preview in wizard
@@ -2076,22 +2270,40 @@ function processUploadedImage(base64Str, imageType, prefix) {
   } else {
     // Direct state setting for setting tab
     if (!state.settings) state.settings = {};
-    state.settings[imageType] = base64Str;
+    
+    let pathOrBase64 = base64Str;
+    if (hasApi && base64Str) {
+      try {
+        pathOrBase64 = await window.api.saveImage(imageType, base64Str);
+      } catch (err) {
+        console.error(`Failed to save image ${imageType} to disk:`, err);
+      }
+    }
+    
+    state.settings[imageType] = pathOrBase64;
     
     // Update preview and save
     const container = DOM[`sett${capitalize(imageType)}Preview`];
-    container.querySelector('.upload-preview-img').src = base64Str;
+    container.querySelector('.upload-preview-img').src = pathOrBase64;
     container.style.display = 'flex';
     
-    saveSettings(state.settings);
+    await saveSettings(state.settings);
     calculateInvoice();
   }
 }
 
-function removeUploadedImage(imageType, prefix) {
+async function removeUploadedImage(imageType, prefix) {
+  const hasApi = typeof window !== 'undefined' && window.api;
   if (prefix === 'sett' && state.settings) {
+    if (hasApi) {
+      try {
+        await window.api.saveImage(imageType, '');
+      } catch (err) {
+        console.error(`Failed to delete image ${imageType} on disk:`, err);
+      }
+    }
     state.settings[imageType] = '';
-    saveSettings(state.settings);
+    await saveSettings(state.settings);
     DOM[`sett${capitalize(imageType)}Preview`].style.display = 'none';
     calculateInvoice();
   }
@@ -2100,7 +2312,7 @@ function removeUploadedImage(imageType, prefix) {
 
 
 // --- WIZARD SUBMIT ---
-function handleSaveWizardSubmit() {
+async function handleSaveWizardSubmit() {
   const name = DOM.wizCompanyName.value.trim();
   if (!name) {
     alert('Company Name is required.');
@@ -2123,6 +2335,21 @@ function handleSaveWizardSubmit() {
       DOM.wizQrEnable.checked = true;
       DOM.wizQrUploadContainer.style.display = 'block';
       return;
+    }
+  }
+
+  const hasApi = typeof window !== 'undefined' && window.api;
+  let logoPath = tempWizardUploads.logo || '';
+  let sigPath = tempWizardUploads.signature || '';
+  let qrPath = tempWizardUploads.qr || '';
+
+  if (hasApi) {
+    try {
+      if (tempWizardUploads.logo) logoPath = await window.api.saveImage('logo', tempWizardUploads.logo);
+      if (tempWizardUploads.signature) sigPath = await window.api.saveImage('signature', tempWizardUploads.signature);
+      if (tempWizardUploads.qr) qrPath = await window.api.saveImage('qr', tempWizardUploads.qr);
+    } catch (err) {
+      console.error("Failed to save wizard images to disk:", err);
     }
   }
   
@@ -2152,14 +2379,14 @@ function handleSaveWizardSubmit() {
     qrEnable: DOM.wizQrEnable.checked,
     companySignatoryName: DOM.wizSigName.value.trim(),
     companySignatoryDesignation: DOM.wizSigDesignation.value.trim(),
-    logo: tempWizardUploads.logo || '',
-    signature: tempWizardUploads.signature || '',
-    qr: tempWizardUploads.qr || '',
+    logo: logoPath,
+    signature: sigPath,
+    qr: qrPath,
     defaultTerms: '1. Payment is due within specified credit days.\n2. Please mention the invoice number in your bank transfer.'
   };
   
   state.settings = newSettings;
-  saveSettings(newSettings);
+  await saveSettings(newSettings);
   
   DOM.setupWizard.style.display = 'none';
   populateSettingsForm();
@@ -2167,11 +2394,64 @@ function handleSaveWizardSubmit() {
 }
 
 // --- SETTINGS SAVE ---
-function saveSettings(settingsObj) {
-  localStorage.setItem(STATE_KEYS.SETTINGS, JSON.stringify(settingsObj));
+async function saveSettings(settingsObj) {
+  const hasApi = typeof window !== 'undefined' && window.api;
+  if (hasApi) {
+    await window.api.saveData('settings', settingsObj);
+  } else {
+    localStorage.setItem(STATE_KEYS.SETTINGS, JSON.stringify(settingsObj));
+  }
 }
 
-function saveSettingsFromForm() {
+async function saveParties(partiesList) {
+  const hasApi = typeof window !== 'undefined' && window.api;
+  if (hasApi) {
+    await window.api.saveData('parties', partiesList);
+  } else {
+    localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(partiesList));
+  }
+}
+
+async function saveInvoices(invoicesList) {
+  const hasApi = typeof window !== 'undefined' && window.api;
+  if (hasApi) {
+    await window.api.saveData('invoices', invoicesList);
+  } else {
+    localStorage.setItem(STATE_KEYS.INVOICES, JSON.stringify(invoicesList));
+  }
+}
+
+async function updateStorageStatsUI() {
+  const hasApi = typeof window !== 'undefined' && window.api;
+  const container = document.getElementById('storage-stats-container');
+  if (!container) return;
+
+  if (hasApi) {
+    try {
+      const stats = await window.api.getStorageStats();
+      container.style.display = 'block';
+      
+      const pathEl = document.getElementById('storage-stats-path');
+      const usageEl = document.getElementById('storage-stats-usage');
+      
+      if (pathEl) pathEl.textContent = `Path: ${stats.dataPath}`;
+      if (usageEl) {
+        let sizeText = '';
+        const bytes = stats.bytesUsed;
+        if (bytes < 1024) sizeText = `${bytes} Bytes`;
+        else if (bytes < 1024 * 1024) sizeText = `${(bytes / 1024).toFixed(2)} KB`;
+        else sizeText = `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        usageEl.textContent = sizeText;
+      }
+    } catch (e) {
+      console.error('Failed to update storage stats UI:', e);
+    }
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+async function saveSettingsFromForm() {
   const name = DOM.settCompanyName.value.trim();
   if (!name) {
     alert('Company Name is required.');
@@ -2244,14 +2524,15 @@ function saveSettingsFromForm() {
   };
   
   state.settings = updatedSettings;
-  saveSettings(updatedSettings);
+  await saveSettings(updatedSettings);
   
   alert('Settings saved successfully!');
+  await updateStorageStatsUI();
   calculateInvoice();
 }
 
 // --- GENERATE / PRINT INVOICE ---
-function handleGenerateInvoice() {
+async function handleGenerateInvoice() {
   const inv = state.currentInvoice;
   
   if (!inv.partyName.trim()) {
@@ -2310,7 +2591,7 @@ function handleGenerateInvoice() {
   }
   
   // Save invoice to database history
-  localStorage.setItem(STATE_KEYS.INVOICES, JSON.stringify(state.invoicesHistory));
+  await saveInvoices(state.invoicesHistory);
   
   // Proactively save party to Parties Registry if it's a new name
   const partyExists = state.parties.some(p => p.name.toLowerCase() === inv.partyName.toLowerCase());
@@ -2330,7 +2611,7 @@ function handleGenerateInvoice() {
       taxId: inv.partyTaxId.trim()
     };
     state.parties.push(newParty);
-    localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(state.parties));
+    await saveParties(state.parties);
   }
   
   // Trigger system Print dialog (styled perfectly via CSS media print)
@@ -2449,11 +2730,11 @@ function renderPartiesRegistry() {
   
   // Delete action
   DOM.partiesTableBody.querySelectorAll('.btn-party-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const pId = e.currentTarget.getAttribute('data-id');
       if (confirm('Are you sure you want to delete this customer registry?')) {
         state.parties = state.parties.filter(p => p.id !== pId);
-        localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(state.parties));
+        await saveParties(state.parties);
         renderPartiesRegistry();
       }
     });
@@ -2465,7 +2746,7 @@ function handleAddPartyPrompt() {
 }
 
 function openAddPartyModal() {
-  DOM.modalPartyBackdrop.style.display = 'block';
+  DOM.modalPartyBackdrop.style.display = 'flex';
   setTimeout(() => DOM.modalPartyBackdrop.classList.add('active'), 10);
   DOM.partyModalName.value = '';
   DOM.partyModalPhone.value = '';
@@ -2480,7 +2761,7 @@ function closeAddPartyModal() {
   setTimeout(() => DOM.modalPartyBackdrop.style.display = 'none', 300);
 }
 
-function handleSavePartyModalSubmit() {
+async function handleSavePartyModalSubmit() {
   const name = DOM.partyModalName.value.trim();
   if (!name) {
     alert('Party Name is required.');
@@ -2506,7 +2787,7 @@ function handleSavePartyModalSubmit() {
   };
   
   state.parties.push(newParty);
-  localStorage.setItem(STATE_KEYS.PARTIES, JSON.stringify(state.parties));
+  await saveParties(state.parties);
   renderPartiesRegistry();
   closeAddPartyModal();
   showToast('Party added to registry');
@@ -2575,11 +2856,11 @@ function renderInvoiceHistory() {
   
   // Delete past invoice click
   DOM.invoiceHistoryBody.querySelectorAll('.btn-hist-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const invId = e.currentTarget.getAttribute('data-id');
       if (confirm('Are you sure you want to permanently delete this invoice from history?')) {
         state.invoicesHistory = state.invoicesHistory.filter(i => i.id !== invId);
-        localStorage.setItem(STATE_KEYS.INVOICES, JSON.stringify(state.invoicesHistory));
+        await saveInvoices(state.invoicesHistory);
         renderInvoiceHistory();
         
         // If we deleted the invoice we were currently editing, reset form
