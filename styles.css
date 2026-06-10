@@ -896,12 +896,14 @@ textarea.form-control {
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background-color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  padding: 4px;
 }
 
 .preview-logo-text {
