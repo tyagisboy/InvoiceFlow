@@ -597,23 +597,6 @@
         
         <div class="editor-panel">
           
-          <!-- Local Database Storage Info Panel -->
-          <div id="storage-stats-container" class="step-card" style="margin-bottom: 8px; display: none; background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.2);">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-                <div>
-                  <span class="form-label" style="font-weight: 600; color: var(--text-primary);">Local Filesystem Database</span>
-                  <p id="storage-stats-path" class="toggle-label-desc" style="font-size: 11px;">Path: -</p>
-                </div>
-              </div>
-              <div style="text-align: right;">
-                <span id="storage-stats-usage" style="font-weight: 700; font-size: 14px; color: var(--primary);">0.00 KB</span>
-                <p class="toggle-label-desc" style="font-size: 11px;">Unlimited Storage Mode</p>
-              </div>
-            </div>
-          </div>
-          
           <!-- Company profile settings -->
           <div class="step-card">
             <div class="step-header">
@@ -815,6 +798,22 @@
               <div class="form-group">
                 <label class="form-label" for="sett-sig-designation">Designation / Role</label>
                 <input type="text" id="sett-sig-designation" class="form-control" placeholder="e.g. Managing Director">
+            </div>
+          </div>
+          
+          <!-- Local Database Storage Info Panel -->
+          <div id="storage-stats-container" class="step-card" style="margin-top: 16px; display: none; background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.2);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                <div>
+                  <span class="form-label" style="font-weight: 600; color: var(--text-primary);">Local Filesystem Database</span>
+                  <p id="storage-stats-path" class="toggle-label-desc" style="font-size: 11px;">Path: -</p>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <span id="storage-stats-usage" style="font-weight: 700; font-size: 14px; color: var(--primary);">0.00 KB</span>
+                <p class="toggle-label-desc" style="font-size: 11px;">Unlimited Storage Mode</p>
               </div>
             </div>
           </div>
