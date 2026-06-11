@@ -2668,18 +2668,22 @@ function renderPartiesRegistry() {
     ].filter(Boolean).join(', ');
     
     tr.innerHTML = `
-      <td><strong>${escapeHtml(p.name)}</strong></td>
-      <td>
+      <td data-label="Party Name"><strong>${escapeHtml(p.name)}</strong></td>
+      <td data-label="Contact Details">
         ${p.phone ? `<div>Phone: ${escapeHtml(p.phone)}</div>` : ''}
         ${p.email ? `<div>Email: ${escapeHtml(p.email)}</div>` : ''}
         ${!p.phone && !p.email ? '<span style="color:var(--text-muted)">-</span>' : ''}
       </td>
-      <td><span style="font-size:12px; display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(fullAddr || '-')}</span></td>
-      <td>${p.taxId ? `<code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">${escapeHtml(p.taxId)}</code>` : '<span style="color:var(--text-muted)">-</span>'}</td>
-      <td style="text-align: right;">
+      <td data-label="Billing Address"><span style="font-size:12px; display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(fullAddr || '-')}</span></td>
+      <td data-label="Tax ID">${p.taxId ? `<code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">${escapeHtml(p.taxId)}</code>` : '<span style="color:var(--text-muted)">-</span>'}</td>
+      <td class="actions-cell" style="text-align: right;">
         <div class="table-row-actions">
-          <button class="btn btn-secondary btn-sm btn-party-select" data-id="${p.id}" title="Select for New Invoice">Use</button>
-          <button class="btn btn-secondary btn-sm btn-party-delete" data-id="${p.id}" style="color:var(--danger)" title="Remove Party">Delete</button>
+          <button class="btn-table-action btn-use btn-party-select" data-id="${p.id}" title="Select for New Invoice">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
+          </button>
+          <button class="btn-table-action btn-delete btn-party-delete" data-id="${p.id}" title="Remove Party">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+          </button>
         </div>
       </td>
     `;
@@ -2827,16 +2831,20 @@ function renderInvoiceHistory() {
     const tr = document.createElement('tr');
     const sym = CURRENCY_SYMBOLS[inv.currency] || '₹';
     tr.innerHTML = `
-      <td><strong style="color:var(--primary); font-family:var(--font-secondary);">${escapeHtml(inv.invoiceNumber)}</strong></td>
-      <td><strong>${escapeHtml(inv.partyName)}</strong></td>
-      <td>${formatDate(inv.date)}</td>
-      <td>${formatDate(inv.dueDate)}</td>
-      <td><span class="status-badge status-${(inv.status || 'pending').toLowerCase()}">${escapeHtml(inv.status || 'Pending')}</span></td>
-      <td><strong>${sym} ${formatNumber(inv.grandTotal)}</strong></td>
-      <td style="text-align: right;">
+      <td data-label="Invoice No"><strong style="color:var(--primary); font-family:var(--font-secondary);">${escapeHtml(inv.invoiceNumber)}</strong></td>
+      <td data-label="Party Name"><strong>${escapeHtml(inv.partyName)}</strong></td>
+      <td data-label="Date">${formatDate(inv.date)}</td>
+      <td data-label="Due Date">${formatDate(inv.dueDate)}</td>
+      <td data-label="Status"><span class="status-badge status-${(inv.status || 'pending').toLowerCase()}">${escapeHtml(inv.status || 'Pending')}</span></td>
+      <td data-label="Grand Total"><strong>${sym} ${formatNumber(inv.grandTotal)}</strong></td>
+      <td class="actions-cell" style="text-align: right;">
         <div class="table-row-actions">
-          <button class="btn btn-secondary btn-sm btn-hist-edit" data-id="${inv.id}">Edit</button>
-          <button class="btn btn-secondary btn-sm btn-hist-delete" data-id="${inv.id}" style="color:var(--danger)">Delete</button>
+          <button class="btn-table-action btn-edit btn-hist-edit" data-id="${inv.id}" title="Edit Invoice">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </button>
+          <button class="btn-table-action btn-delete btn-hist-delete" data-id="${inv.id}" title="Delete Invoice">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+          </button>
         </div>
       </td>
     `;

@@ -3044,3 +3044,141 @@ textarea.form-control {
 .toast-msg.show {
   transform: translateX(0);
 }
+
+/* Table Action Icon Buttons */
+.btn-table-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.btn-table-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-table-action:hover {
+  background-color: var(--bg-input);
+  border-color: var(--text-muted);
+}
+
+.btn-table-action.btn-use:hover {
+  color: var(--success);
+  border-color: rgba(16, 185, 129, 0.4);
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.btn-table-action.btn-edit:hover {
+  color: var(--primary);
+  border-color: rgba(79, 70, 229, 0.4);
+  background-color: rgba(79, 70, 229, 0.08);
+}
+
+.btn-table-action.btn-delete:hover {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.4);
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+/* Ensure no text-wrapping or button overlaps on desktop */
+.table-row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: nowrap !important;
+}
+
+/* Responsive Table Card Layout for Mobile */
+@media screen and (max-width: 768px) {
+  .invoices-list-container .data-table-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow-x: visible !important;
+  }
+  
+  .invoices-list-container .data-table,
+  .invoices-list-container .data-table thead,
+  .invoices-list-container .data-table tbody,
+  .invoices-list-container .data-table tr,
+  .invoices-list-container .data-table td,
+  .invoices-list-container .data-table th {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  
+  .invoices-list-container .data-table thead {
+    display: none !important;
+  }
+  
+  .invoices-list-container .data-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  .invoices-list-container .data-table tr {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-sm) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    position: relative !important;
+  }
+  
+  .invoices-list-container .data-table td {
+    padding: 0 0 8px 0 !important;
+    border: none !important;
+    border-bottom: 1px dashed rgba(0,0,0,0.05) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 13px !important;
+    text-align: left !important;
+    min-height: 28px;
+  }
+  
+  [data-theme="dark"] .invoices-list-container .data-table td {
+    border-bottom-color: rgba(255,255,255,0.05) !important;
+  }
+
+  .invoices-list-container .data-table tr td:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+  
+  /* Responsive content labels */
+  .invoices-list-container .data-table td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-right: 12px;
+  }
+  
+  /* Force actions to align beautifully on mobile card */
+  .invoices-list-container .data-table td.actions-cell {
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 12px !important;
+    margin-top: 4px !important;
+    justify-content: flex-end !important;
+  }
+  
+  .invoices-list-container .data-table td.actions-cell::before {
+    display: none !important;
+  }
+}
+
